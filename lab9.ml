@@ -8,6 +8,10 @@ This lab practices concepts of substitution semantics.
 
  *)
 
+(*
+                               SOLUTION
+ *)
+
 
 (*====================================================================
 Part 1: Substitution semantics derivation
@@ -23,7 +27,13 @@ according to the semantic rules presented in Chapter 13.
 Before beginning, what should this expression evaluate to? Test out
 your prediction in the OCaml REPL. *)
 
-(* Evaluates to 36 *)
+(* ANSWER: The expression evaluates to 36:
+
+    # let x = 3 + 5 in
+        (fun x -> x * x) (x - 2)  ;;
+    - : int = 36
+
+*)
 
 (* The exercises will take you through the derivation stepwise, so
 that you can use the results from earlier exercises in the later
@@ -50,7 +60,11 @@ uses. You should do that too below.) *)
 
 (*....................................................................
 Exercise 2. What is the result of the following substitution according
-to the definition in Figure 13.3?
+to the definition in Figure 13.3, on page 139? We've numbered the 
+equations in the order they appear in that figure. Note, the existance
+of both evaluation rules, such as R_int and R_+ and substitution rules. 
+Figure 13.3 includes only substitution rules and rules for evaluating
+free variables. 
 
     (x + 5) [x |-> 3]
 ....................................................................*)
@@ -89,7 +103,7 @@ Exercise 4. Carry out the derivation for the semantics of the
 expression 8 - 2.
 ....................................................................*)
 
-(* 
+(* ANSWER:
 
     8 - 2 =>
            | 8 => 8         (R_int)
@@ -102,7 +116,7 @@ Exercise 5. Carry out the derivation for the semantics of the
 expression 6 * 6.
 ....................................................................*)
 
-(*
+(* ANSWER:
 
     6 * 6 =>
           | 6 => 6          (R_int)
@@ -116,7 +130,7 @@ to the definition in Figure 13.3?
     (x * x) [x |-> 6]
 ....................................................................*)
 
-(*
+(* ANSWER:
 
     (x * x) [x |-> 6]
         = x [x |-> 6] * x [x |-> 6]     (by Eq. 4)
@@ -130,7 +144,17 @@ equation in some exercises below. What should such an equation look
 like? (Below, we'll refer to this as Eq. 11.)
 ....................................................................*)
 
-(*    (P R)[x |-> Q] = P[x |-> Q] R[x |-> Q]   *)
+(*    (P R)[x |-> Q] = P[x |-> Q]  R[x |-> Q]       
+
+  Consider the expression below to understand wby Q must be 
+  substituted for x in both P and R
+
+  let x = 5 in
+  (fun y -> x + y) x
+  
+  Also note that pre-existing rules for substitution in functions
+  govern the semantics of P[x |-> Q]. 
+*)
 
 (*....................................................................
 Exercise 8. What is the result of the following substitution according
@@ -139,7 +163,7 @@ to the definition in Figure 13.3?
     ((fun x -> x * x) (x - 2)) [x |-> 8]
 ....................................................................*)
 
-(*
+(* ANSWER:
 
     ((fun x -> x * x) (x - 2)) [x |-> 8]
         = ((fun x -> x * x) [x |-> 8]) ((x - 2) [x |-> 8])    (by Eq. 11)
@@ -154,7 +178,7 @@ expression
     (fun x -> x * x) (8 - 2)
 ....................................................................*)
 
-(*
+(* ANSWER:
 
     (fun x -> x * x) (8 - 2) =>         
          | fun x -> x + x => fun x -> x + x    (R_fun)
@@ -167,6 +191,9 @@ expression
 Exercise 10. Finally, carry out the derivation for the semantics of the
 expression
 
+    let x = 3 + 5 in (fun x -> x * x) (x - 2)
+....................................................................*)
+
 (* ANSWER:
 
     let x = 3 + 5 in (fun x -> x * x) (x - 2) =>
@@ -174,8 +201,6 @@ expression
          | (fun x -> x * x) (8 - 2) => 36          (Exercise 8)
          => 36                                     (R_let)
  *)
-
-....................................................................*)
 
 (*====================================================================
 Part 2: Pen and paper exercises with the free variables and
@@ -198,10 +223,9 @@ paper.
 3. let x = y in let y = x in f x y
 
 4. let x = fun y -> x in x
-
 ....................................................................*)
 
-(*
+(* ANSWER:
 
 1. let x = 3 in let y = x in f x y
 
@@ -259,11 +283,24 @@ substitution given in the textbook, Figure 13.3.
 5. (let x = y * y in x + x)[y |-> 3]
 
 ....................................................................*)
-(*
+
+(* ANSWER: 
+
 1. (x + 1)[x |-> 50]
       = x[x |-> 50] + 1[x |-> 50]       (by Eq. 4)
       = 50 + 1[x |-> 50]                (by Eq. 2)
       = 50 + 1                          (by Eq. 1)
+
+   If you came up with the answer 51, you're confusing the
+   substitution operation, which operates purely syntactically to
+   replace portions of an expression, with evaluation, which
+   simplifies an expression to one that is semantically equivalent but
+   can be syntactically quite different.
+
+   In case you were wondering where the parentheses around (x + 1)
+   went, they disappear because those were really just in the concrete
+   syntax to notate the abstract syntax, which is what the
+   substitution operation operates on.
 
 2. (x + 1)[x |-> 50] 
       = x[y |-> 50] + 1[y |-> 50] 
@@ -304,7 +341,9 @@ just use it directly.
 4. let x = 51 in let x = 124 in x 
 
 ......................................................................*)
-(*
+
+(* ANSWER:
+
 1. 2 * 25 =>
           | 2 => 2              (R_int)
           | 5 => 5              (R_int)
@@ -337,7 +376,7 @@ just use it directly.
                                                       |  124 => 124
                                                       => 124
                                   => 124
-*)
+ *)
 
 (*====================================================================
 Part 3: Implementing a simple arithmetic language.
@@ -406,19 +445,19 @@ variables in the expression
 ....................................................................*)
 
 module VarSet = Set.Make (struct
-    type t = varspec
-    let compare = String.compare
-  end) ;;
+                            type t = varspec
+                            let compare = String.compare
+                          end) ;;
 
 let rec free_vars (exp : expr) : VarSet.t =
-match exp with
-| Var x -> VarSet.singleton x
-| Int _ -> VarSet.empty
-| Unop(_, arg) -> free_vars arg
-| Binop(_, arg1, arg2) ->
-VarSet.union (free_vars arg1) (free_vars arg2)
-| Let(x, def, body) -> 
-VarSet.union (free_vars def) (VarSet.remove x (free_vars body))
+  match exp with
+  | Var x -> VarSet.singleton x
+  | Int _ -> VarSet.empty
+  | Unop(_, arg) -> free_vars arg
+  | Binop(_, arg1, arg2) ->
+     VarSet.union (free_vars arg1) (free_vars arg2)
+  | Let(x, def, body) -> 
+     VarSet.union (free_vars def) (VarSet.remove x (free_vars body))
 ;;
 
 (*......................................................................
@@ -459,19 +498,18 @@ You should get the following behavior:
 ......................................................................*)
 
 let subst (exp : expr) (var_name : varspec) (repl : expr) : expr =
-    let rec sub (exp : expr) : expr =
-      match exp with
-      | Var x ->
-         if x = var_name then repl else exp
-      | Int _ -> exp
-      | Unop(op, arg) -> Unop(op, sub arg)
-      | Binop(op, arg1, arg2) -> Binop(op, sub arg1, sub arg2)
-      | Let(x, def, body) ->
-         if x = var_name then Let(x, sub def, body)
-         else Let(x, sub def, sub body)
-    in
-    sub exp ;;
-
+  let rec sub (exp : expr) : expr =
+    match exp with
+    | Var x ->
+       if x = var_name then repl else exp
+    | Int _ -> exp
+    | Unop(op, arg) -> Unop(op, sub arg)
+    | Binop(op, arg1, arg2) -> Binop(op, sub arg1, sub arg2)
+    | Let(x, def, body) ->
+       if x = var_name then Let(x, sub def, body)
+       else Let(x, sub def, sub body)
+  in
+  sub exp ;;
 (*......................................................................
 Exercise 17: Complete the eval function below. Try to implement these
 functions from scratch. If you get stuck, however, a good (though
@@ -483,28 +521,28 @@ exception UnboundVariable of string ;;
 exception IllFormed of string ;;
 
 let binopeval (op : binop) (v1 : expr) (v2 : expr) : expr =
-    match op, v1, v2 with
-    | Plus, Int x1, Int x2 -> Int (x1 + x2)
-    | Plus, _, _ -> raise (IllFormed "can't add non-integers")
-    | Minus, Int x1, Int x2 -> Int (x1 - x2)
-    | Minus, _, _ -> raise (IllFormed "can't subtract non-integers")
-    | Times, Int x1, Int x2 -> Int (x1 * x2) 
-    | Times, _, _ -> raise (IllFormed "can't multiply non-integers")
-    | Divide, Int x1, Int x2 -> Int (x1 / x2)
-    | Divide, _, _ -> raise (IllFormed "can't divide non-integers") ;;
-  
-  let unopeval (op : unop) (e : expr) : expr = 
-    match op, e with 
-    | Negate, Int x -> Int (~- x)
-    | Negate, _ -> raise (IllFormed "can't negate non-integers")
-  
-  let rec eval (e : expr) : expr =
-    match e with
-    | Int _ -> e
-    | Var x -> raise (UnboundVariable x)
-    | Unop (op, e1) -> unopeval op (eval e1)
-    | Binop (op, e1, e2) -> binopeval op (eval e1) (eval e2)
-    | Let (x, def, body) -> eval (subst body x (eval def)) ;;
+  match op, v1, v2 with
+  | Plus, Int x1, Int x2 -> Int (x1 + x2)
+  | Plus, _, _ -> raise (IllFormed "can't add non-integers")
+  | Minus, Int x1, Int x2 -> Int (x1 - x2)
+  | Minus, _, _ -> raise (IllFormed "can't subtract non-integers")
+  | Times, Int x1, Int x2 -> Int (x1 * x2) 
+  | Times, _, _ -> raise (IllFormed "can't multiply non-integers")
+  | Divide, Int x1, Int x2 -> Int (x1 / x2)
+  | Divide, _, _ -> raise (IllFormed "can't divide non-integers") ;;
+
+let unopeval (op : unop) (e : expr) : expr = 
+  match op, e with 
+  | Negate, Int x -> Int (~- x)
+  | Negate, _ -> raise (IllFormed "can't negate non-integers")
+
+let rec eval (e : expr) : expr =
+  match e with
+  | Int _ -> e
+  | Var x -> raise (UnboundVariable x)
+  | Unop (op, e1) -> unopeval op (eval e1)
+  | Binop (op, e1, e2) -> binopeval op (eval e1) (eval e2)
+  | Let (x, def, body) -> eval (subst body x (eval def)) ;;
 
 (*......................................................................
 Go ahead and test eval by evaluating some arithmetic expressions and 
